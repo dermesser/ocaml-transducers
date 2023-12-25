@@ -1,0 +1,4 @@
+(executable
+ (public_name transducers)
+ (name main)
+ (libraries transducers))

@@ -1,0 +1,6 @@
+(library
+ (name td))
+
+(library
+ (name td_test)
+ (libraries Td))
