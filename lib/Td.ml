@@ -85,11 +85,11 @@ let op1 () : (int, int, _) td =
   td
 
 let op2 () : (int, int, _) td =
-  let _map_plus3 : (int, int, int) td = mapping (fun x -> x + 3) in
+  let map_plus3 : (int, int, _) td = mapping (fun x -> x + 3) in
   let map_sq : (int, int list, _) td = mapping (fun x -> [ x; x * x ]) in
   let take10 = take 10 in
   let concat_all : (int list, int, _) td = lconcatting in
-  let td = compose take10 (compose concat_all map_sq) in
+  let td = compose take10 (compose concat_all (compose map_sq map_plus3)) in
   td
 
 type ilist = int list [@@deriving eq, show]
@@ -112,7 +112,7 @@ let%test "test_op2" =
   let inp = [ 1; 2; 3; 4; 5; 6; 7; 8 ] in
   let outp = run_list (op2 ()) inp in
   print show_ilist outp;
-  equal_ilist outp [ 1; 1; 2; 4; 3; 9; 4; 16; 5; 25 ]
+  equal_ilist outp [ 4; 16; 5; 25; 6; 36; 7; 49; 8; 64 ]
 
 let%test "test_take" =
   let td = take 3 in
