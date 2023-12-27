@@ -36,6 +36,37 @@ let take (n : int) (step : ('e, 'a) step) : ('e, 'a) step =
   in
   step'
 
+let drop (n : int) (step : ('e, 'a) step) : ('e, 'a) step =
+  let count = ref 0 in
+  let cond () = !count < n in
+  let step' a e =
+    if cond () then (
+      count := !count + 1;
+      a)
+    else step a e
+  in
+  step'
+
+let take_while (p : 'e -> bool) (step : ('e, 'a) step) : ('e, 'a) step =
+  let cond = ref true in
+  let step' a e =
+    if !cond then (
+      cond := p e;
+      if !cond then step a e else a)
+    else a
+  in
+  step'
+
+let drop_while (p : 'e -> bool) (step : ('e, 'a) step) : ('e, 'a) step =
+  let cond = ref true in
+  let step' a e =
+    if !cond then (
+      cond := p e;
+      if !cond then a else step a e)
+    else step a e
+  in
+  step'
+
 let rle (eq : 'e -> 'e -> bool) (step : ('e * int, 'a) step) : ('e, 'a) step =
   let count = ref 0 in
   let prev = ref None in
@@ -59,9 +90,18 @@ let rle (eq : 'e -> 'e -> bool) (step : ('e * int, 'a) step) : ('e, 'a) step =
 
 (* transducer combinators *)
 
+(* compose two transducers, with the right one providing the outer
+   transducer, taking the left one as step function constructor.
+
+   i.e. `compose a b` is equivalent to `fun step -> b (a step)`
+*)
 let compose (td1 : ('ee, 'eee, 'a) td) (td2 : ('e, 'ee, 'a) td)
     (step : ('eee, 'a) step) : ('e, 'a) step =
   td2 (td1 step)
+
+(* compose two transducers, so that the left one is applied first, and
+   its output is fed to the right one. *)
+let ( |-> ) a b = compose b a
 
 (* transducer executors *)
 
@@ -89,8 +129,9 @@ let op2 () : (int, int, _) td =
   let map_sq : (int, int list, _) td = mapping (fun x -> [ x; x * x ]) in
   let take10 = take 10 in
   let concat_all : (int list, int, _) td = lconcatting in
-  let td = compose take10 (compose concat_all (compose map_sq map_plus3)) in
-  td
+  let _td = compose take10 (compose concat_all (compose map_sq map_plus3)) in
+  let td2 = map_plus3 |-> map_sq |-> concat_all |-> take10 in
+  td2
 
 type ilist = int list [@@deriving eq, show]
 type tilist = (int * int) list [@@deriving eq, show]
@@ -111,7 +152,6 @@ let%test "test_op1_sequence" =
 let%test "test_op2" =
   let inp = [ 1; 2; 3; 4; 5; 6; 7; 8 ] in
   let outp = run_list (op2 ()) inp in
-  print show_ilist outp;
   equal_ilist outp [ 4; 16; 5; 25; 6; 36; 7; 49; 8; 64 ]
 
 let%test "test_take" =
@@ -143,5 +183,12 @@ let%test "test_rle" =
     ]
   in
   let outp = run_list td inp in
-  print show_tslist outp;
-  true
+  equal_tslist outp [ ("one", 3); ("two", 2); ("three", 4); ("four", 5) ]
+
+let%test "test_whiles" =
+  let tw = take_while (fun x -> Int.(x < 10)) in
+  let dw = drop_while (fun x -> Int.(x < 5)) in
+  let td = dw |-> tw in
+  let inp = [ 1; 2; 3; 4; 5; 6; 7; 8; 9; 10; 11; 12; 13; 14; 15 ] in
+  let outp = run_list td inp in
+  equal_ilist outp [ 5; 6; 7; 8; 9 ]
