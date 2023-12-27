@@ -5,3 +5,10 @@
  (inline_tests)
  (preprocess (pps ppx_inline_test ppx_deriving.show ppx_deriving.eq))
  )
+
+(library
+  (name transducers_test)
+  (modules Td_test)
+  (libraries transducers)
+  (inline_tests)
+  (preprocess (pps ppx_inline_test ppx_deriving.show ppx_deriving.eq)))

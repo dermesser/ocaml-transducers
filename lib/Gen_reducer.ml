@@ -1,5 +1,3 @@
-
-
 type ('a, 'e, 'r) red = { step : 'a -> 'e -> 'a; state : 'a; result : 'a -> 'r }
 type ('e, 'r) t = Red : ('a, 'e, 'r) red -> ('e, 'r) t
 
@@ -26,3 +24,10 @@ let compose (Red { step = step1; state = state1; result = result1 })
   let result' (st1, _) = result1 st1 in
   Red { step = step'; state = state'; result = result' }
 
+let list_reducer () =
+  let state = [] and result = List.rev and step xs x = x :: xs in
+  red step state result
+
+let noop_reducer () : (_, unit) t =
+  let state = () and result _ = () and step _ _ = () in
+  red step state result
