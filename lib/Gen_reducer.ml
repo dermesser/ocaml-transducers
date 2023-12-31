@@ -19,9 +19,6 @@ let reduce (Red { step; state; result }) e =
 
 let extract (Red { result; state; _ }) = result state
 
-let map f (Red ({ result; _ } as prev)) =
-  Red { prev with result = (fun state -> f (result state)) }
-
 let return x =
   Red { step = (fun () _ -> ()); state = (); result = (fun () -> x) }
 

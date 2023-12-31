@@ -13,13 +13,26 @@ let run_list ~root td l =
 let compose a b step = b (a step)
 
 (* feed result of transducer a into transducer b *)
-let ( |-> ) a b = fun step -> a (b step)
+let ( |-> ) a b step = a (b step)
 
-let mapping (f : 'b -> 'c) (td : ('a, 'b) Gen_reducer.t) :
-    ('a, 'c) Gen_reducer.t =
-  Gen_reducer.map f td
+let result_mapping (f : 'b -> 'c) : ('a, 'b, 'a, 'c) t =
+ fun (td : ('a, 'b) Gen_reducer.t) ->
+  let open Gen_reducer in
+  let (Red { state; step; result }) = td in
+  make { state; step; result = (fun state -> f (result state)) }
 
-let counting (td : ('a, 'b) Gen_reducer.t) : ('a, int * 'b) Gen_reducer.t =
+(* map a transducer input over a function *)
+let mapping (f : 'a -> 'b) : ('a, 'c, 'b, 'c) t =
+ fun (td : ('a, 'c) Gen_reducer.t) ->
+  let open Gen_reducer in
+  let (Red { state; step; result }) = td in
+  let step' st x = step st (f x) in
+  let mapping_td = make { state; step = step'; result } in
+  mapping_td
+
+(* counts how many elements have been passed through the transducer. *)
+let counting : ('a, 'b, 'a, int * 'b) t =
+ fun (td : ('a, 'b) Gen_reducer.t) ->
   let open Gen_reducer in
   let (Red { state; step; result }) = td in
   let state' = (0, state)
@@ -28,13 +41,16 @@ let counting (td : ('a, 'b) Gen_reducer.t) : ('a, int * 'b) Gen_reducer.t =
   let counting_td = make { state = state'; step = step'; result = result' } in
   counting_td
 
-let filtering (p : 'a -> bool) (td : ('a, 'b) Gen_reducer.t) =
+(* only pass through elements that satisfy a predicate *)
+let filtering (p : 'a -> bool) : ('a, 'b, 'a, 'b) t =
+ fun (td : ('a, 'b) Gen_reducer.t) ->
   let open Gen_reducer in
   let (Red { state; step; result }) = td in
   let step' st x = if p x then step st x else st in
   let filtering_td = make { state; step = step'; result } in
   filtering_td
 
+(* only pass through at most n elements *)
 let take_n (n : int) : ('a, 'b, 'a, 'b) t =
  fun (td : ('a, 'b) Gen_reducer.t) ->
   let open Gen_reducer in
@@ -44,16 +60,17 @@ let take_n (n : int) : ('a, 'b, 'a, 'b) t =
   let take_n_td = make { state = (state, 0); step = step'; result = result' } in
   take_n_td
 
-let enumerate : ('a, 'b, 'a, int * 'b) t =
- fun (td : ('a, 'b) Gen_reducer.t) ->
+(* pass elements through, enumerating them. *)
+let enumerating : (int * 'a, 'b, 'a, 'b) t =
+ fun (td : (int * 'a, 'b) Gen_reducer.t) ->
   let open Gen_reducer in
   let (Red { state; step; result }) = td in
-  let step' (st, i) x = (step st x, i + 1) in
-  let result' (st, i) = (i, result st) in
-  let enumerate_td =
+  let step' (st, i) x = (step st (i, x), i + 1) in
+  let result' (st, _i) = result st in
+  let enumerating_td =
     make { state = (state, 0); step = step'; result = result' }
   in
-  enumerate_td
+  enumerating_td
 
 let take_while (p : 'a -> bool) : ('a, 'b, 'a, 'b) t =
  fun td ->
