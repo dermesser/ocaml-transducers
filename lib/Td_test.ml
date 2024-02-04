@@ -51,7 +51,7 @@ let op3 root =
   let f (i, x) = (i, x * x) in
   let map = mapping f in
   let rf l = (List.length l, l) in
-  (result_mapping rf |-> enumerating |-> map) root
+  (enumerating |-> map |-> result_mapping rf) root
 
 type i2list = (int * int) list [@@deriving show, eq]
 
